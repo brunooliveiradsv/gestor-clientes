@@ -73,6 +73,54 @@ app.delete('/api/clientes/:id', async (req, res) => {
   }
 });
 
+// ROTA PARA BUSCAR UM ÚNICO CLIENTE POR ID (PARA EDIÇÃO)
+app.get('/api/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'ID de cliente inválido.' });
+    }
+
+    const cliente = await Cliente.findById(id);
+    if (!cliente) {
+      return res.status(404).json({ message: 'Cliente não encontrado.' });
+    }
+
+    res.status(200).json(cliente);
+  } catch (error) {
+    console.error("Erro ao buscar cliente por ID:", error);
+    res.status(500).json({ message: "Erro interno do servidor." });
+  }
+});
+
+
+// ROTA PARA ATUALIZAR UM CLIENTE (UPDATE)
+app.put('/api/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'ID de cliente inválido.' });
+    }
+
+    // Encontra o cliente pelo ID e o atualiza com os dados do corpo da requisição (req.body)
+    // { new: true } garante que o objeto retornado seja a versão atualizada do cliente.
+    const clienteAtualizado = await Cliente.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+
+    if (!clienteAtualizado) {
+      return res.status(404).json({ message: 'Cliente não encontrado.' });
+    }
+
+    res.status(200).json(clienteAtualizado);
+  } catch (error) {
+    console.error("Erro ao atualizar cliente:", error);
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Erro: CPF já cadastrado em outro cliente." });
+    }
+    res.status(500).json({ message: "Erro interno do servidor ao atualizar cliente." });
+  }
+});
+
+
 // 5. Conectar ao MongoDB e Iniciar o Servidor
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
