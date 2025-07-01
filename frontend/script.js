@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const infoPagina = document.getElementById("info-pagina");
 
   // --- Configuração e Estado ---
-  const API_URL = "https://gestor-clientes-api-bruno.onrender.com/api"; // Sua URL de produção
+  const API_URL = "https://gestor-clientes.onrender.com/api"; // Sua URL de produção
   let sortState = { key: "nome", order: "asc" };
   let currentPage = 1;
   const rowsPerPage = 10;
