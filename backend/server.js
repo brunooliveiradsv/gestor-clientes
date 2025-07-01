@@ -3,125 +3,51 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const Cliente = require('./models/Cliente.js'); // Modelo importado
+const Cliente = require('./models/Cliente.js');
 
 // 2. Inicializar o Express
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 3. Configurar os Middlewares
-app.use(cors());
+// 3. Configuração Robusta do CORS (ATUALIZADO)
+const corsOptions = {
+  origin: 'https://gestorclientes.netlify.app', // Permite requisições APENAS do seu site na Netlify
+  methods: "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS", // Permite todos os métodos que usamos
+  allowedHeaders: "Content-Type, Authorization",
+  credentials: true
+};
+app.use(cors(corsOptions));
+
+// 4. Middlewares
 app.use(express.json());
 
-// 4. Rotas da API
+// 5. Rotas da API (continuam as mesmas)
 app.get('/', (req, res) => {
   res.send('<h1>API do Gestor de Clientes</h1>');
 });
 
-// ROTA PARA CRIAR UM NOVO CLIENTE (CREATE)
-app.post('/api/clientes', async (req, res) => {
-  try {
-    const { nome, cpf, email, telefone, endereco } = req.body;
-    const novoCliente = new Cliente({ nome, cpf, email, telefone, endereco });
-    const clienteSalvo = await novoCliente.save();
-    res.status(201).json(clienteSalvo);
-  } catch (error) {
-    console.error("Erro ao criar cliente:", error);
-    if (error.code === 11000) {
-      return res.status(409).json({ message: "Erro: CPF já cadastrado." });
-    }
-    res.status(500).json({ message: "Ocorreu um erro no servidor ao tentar criar o cliente." });
-  }
+app.post('/api/clientes', async (req, res) => { /* ... (código da rota POST) ... */ 
+  try { const { nome, cpf, email, telefone, endereco } = req.body; const novoCliente = new Cliente({ nome, cpf, email, telefone, endereco }); const clienteSalvo = await novoCliente.save(); res.status(201).json(clienteSalvo); } catch (error) { console.error("Erro ao criar cliente:", error); if (error.code === 11000) { return res.status(409).json({ message: "Erro: CPF já cadastrado." }); } res.status(500).json({ message: "Ocorreu um erro no servidor ao tentar criar o cliente." }); }
 });
 
-// ROTA PARA BUSCAR TODOS OS CLIENTES (READ)
-app.get('/api/clientes', async (req, res) => {
-  try {
-    const clientes = await Cliente.find({}).sort({ createdAt: -1 });
-    res.status(200).json(clientes);
-  } catch (error) {
-    console.error("Erro ao buscar clientes:", error);
-    res.status(500).json({ message: "Erro interno do servidor ao buscar clientes." });
-  }
+app.get('/api/clientes', async (req, res) => { /* ... (código da rota GET all) ... */ 
+  try { const clientes = await Cliente.find({}).sort({ createdAt: -1 }); res.status(200).json(clientes); } catch (error) { console.error("Erro ao buscar clientes:", error); res.status(500).json({ message: "Erro interno do servidor ao buscar clientes." }); }
 });
 
-// ROTA PARA DELETAR UM CLIENTE (DELETE)
-app.delete('/api/clientes/:id', async (req, res) => {
-  try {
-    // 1. Pega o ID a partir dos parâmetros da URL (ex: /api/clientes/60b8d2...)
-    const { id } = req.params;
-
-    // 2. Valida se o ID tem o formato correto do MongoDB antes de buscar
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'ID de cliente inválido.' });
-    }
-
-    // 3. Encontra o cliente pelo ID e o remove do banco de dados
-    const clienteRemovido = await Cliente.findByIdAndDelete(id);
-
-    // 4. Se findByIdAndDelete não encontrar um cliente com esse ID, ele retorna null
-    if (!clienteRemovido) {
-      return res.status(404).json({ message: 'Cliente não encontrado.' });
-    }
-
-    // 5. Retorna uma mensagem de sucesso
-    res.status(200).json({ message: 'Cliente removido com sucesso.' });
-
-  } catch (error) {
-    console.error("Erro ao remover cliente:", error);
-    res.status(500).json({ message: "Erro interno do servidor ao remover cliente." });
-  }
+app.delete('/api/clientes/:id', async (req, res) => { /* ... (código da rota DELETE) ... */
+  try { const { id } = req.params; if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID de cliente inválido.' }); } const clienteRemovido = await Cliente.findByIdAndDelete(id); if (!clienteRemovido) { return res.status(404).json({ message: 'Cliente não encontrado.' }); } res.status(200).json({ message: 'Cliente removido com sucesso.' }); } catch (error) { console.error("Erro ao remover cliente:", error); res.status(500).json({ message: "Erro interno do servidor ao remover cliente." }); }
 });
 
-// ROTA PARA BUSCAR UM ÚNICO CLIENTE POR ID (PARA EDIÇÃO)
-app.get('/api/clientes/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'ID de cliente inválido.' });
-    }
+app.get('/api/clientes/:id', async (req, res) => { /* ... (código da rota GET one) ... */
+  try { const { id } = req.params; if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID de cliente inválido.' }); } const cliente = await Cliente.findById(id); if (!cliente) { return res.status(404).json({ message: 'Cliente não encontrado.' }); } res.status(200).json(cliente); } catch (error) { console.error("Erro ao buscar cliente por ID:", error); res.status(500).json({ message: "Erro interno do servidor." }); }
+});
 
-    const cliente = await Cliente.findById(id);
-    if (!cliente) {
-      return res.status(404).json({ message: 'Cliente não encontrado.' });
-    }
-
-    res.status(200).json(cliente);
-  } catch (error) {
-    console.error("Erro ao buscar cliente por ID:", error);
-    res.status(500).json({ message: "Erro interno do servidor." });
-  }
+app.put('/api/clientes/:id', async (req, res) => { /* ... (código da rota PUT) ... */
+  try { const { id } = req.params; if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'ID de cliente inválido.' }); } const clienteAtualizado = await Cliente.findByIdAndUpdate(id, req.body, { new: true, runValidators: true }); if (!clienteAtualizado) { return res.status(404).json({ message: 'Cliente não encontrado.' }); } res.status(200).json(clienteAtualizado); } catch (error) { console.error("Erro ao atualizar cliente:", error); if (error.code === 11000) { return res.status(409).json({ message: "Erro: CPF já cadastrado em outro cliente." }); } res.status(500).json({ message: "Erro interno do servidor ao atualizar cliente." }); }
 });
 
 
-// ROTA PARA ATUALIZAR UM CLIENTE (UPDATE)
-app.put('/api/clientes/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'ID de cliente inválido.' });
-    }
-
-    // Encontra o cliente pelo ID e o atualiza com os dados do corpo da requisição (req.body)
-    // { new: true } garante que o objeto retornado seja a versão atualizada do cliente.
-    const clienteAtualizado = await Cliente.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-
-    if (!clienteAtualizado) {
-      return res.status(404).json({ message: 'Cliente não encontrado.' });
-    }
-
-    res.status(200).json(clienteAtualizado);
-  } catch (error) {
-    console.error("Erro ao atualizar cliente:", error);
-    if (error.code === 11000) {
-      return res.status(409).json({ message: "Erro: CPF já cadastrado em outro cliente." });
-    }
-    res.status(500).json({ message: "Erro interno do servidor ao atualizar cliente." });
-  }
-});
-
-
-// 5. Conectar ao MongoDB e Iniciar o Servidor
+// 6. Conectar ao MongoDB e Iniciar o Servidor
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Conectado ao MongoDB com sucesso!');
