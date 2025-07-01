@@ -314,6 +314,9 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const processarDadosImportados = async (novosClientes) => {
+    console.log("--- INICIANDO PROCESSO DE IMPORTAÇÃO ---");
+    console.log("Total de clientes lidos do CSV:", novosClientes.length);
+
     let importadosComSucesso = 0;
     let ignorados = 0;
     showAlert(
@@ -321,39 +324,73 @@ document.addEventListener("DOMContentLoaded", () => {
       `Importando ${novosClientes.length} registros... Isso pode levar um momento.`
     );
 
-    for (const cliente of novosClientes) {
+    // Usamos um for...of para poder usar await dentro do loop de forma sequencial
+    for (const [index, cliente] of novosClientes.entries()) {
+      console.log(`\n--- Processando Cliente #${index + 1} ---`);
+
       const clienteNormalizado = {};
       for (const key in cliente) {
         clienteNormalizado[key.toLowerCase()] = cliente[key];
       }
+      console.log("Dados brutos do cliente:", clienteNormalizado);
+
       const { nome, cpf, email } = clienteNormalizado;
 
-      if (!nome || !cpf || !email || !validarCPF(cpf) || !validarEmail(email)) {
+      // Validação Front-end com logs detalhados
+      if (!nome || !cpf || !email) {
+        console.warn(
+          `--> IGNORADO: Dados essenciais (nome, cpf ou email) estão faltando.`
+        );
         ignorados++;
-        continue; // Pula para o próximo cliente se este for inválido
+        continue; // Pula para o próximo cliente
+      }
+      if (!validarCPF(cpf)) {
+        console.warn(`--> IGNORADO: Formato do CPF '${cpf}' é inválido.`);
+        ignorados++;
+        continue;
+      }
+      if (!validarEmail(email)) {
+        console.warn(`--> IGNORADO: Formato do Email '${email}' é inválido.`);
+        ignorados++;
+        continue;
       }
 
+      // Se passou na validação inicial, tenta enviar para a API
       try {
+        console.log(`Enviando cliente #${index + 1} ('${nome}') para a API...`);
         const response = await fetch(`${API_URL}/clientes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(clienteNormalizado),
         });
+
         if (response.ok) {
+          console.log(`--> SUCESSO: Cliente #${index + 1} importado.`);
           importadosComSucesso++;
         } else {
-          ignorados++; // Conta como ignorado se der erro (ex: CPF duplicado)
+          const errorData = await response.json();
+          console.warn(
+            `--> IGNORADO: API rejeitou o cliente #${index + 1}. Status: ${
+              response.status
+            }. Motivo:`,
+            errorData.message
+          );
+          ignorados++;
         }
       } catch (error) {
-        console.error("Erro ao importar cliente:", error);
+        console.error(
+          `--> FALHA: Erro de rede ao tentar importar o cliente #${index + 1}.`,
+          error
+        );
         ignorados++;
       }
     }
 
+    console.log("--- PROCESSO DE IMPORTAÇÃO FINALIZADO ---");
     await renderizarTabela(); // Atualiza a tabela com todos os novos dados
     showAlert(
       "Importação Concluída",
-      `${importadosComSucesso} cliente(s) importado(s). ${ignorados} registro(s) foram ignorados (inválidos ou duplicados).`
+      `${importadosComSucesso} cliente(s) importado(s). ${ignorados} registro(s) foram ignorados.`
     );
   };
 
